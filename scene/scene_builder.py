@@ -1,7 +1,13 @@
 import random
 from typing import List
 import glm
-from shape import *
+from shape import Renderable,Mesh, Sphere
+from shape.cylinder import Cylinder
+from shape.cone import Cone
+from shape.quadric import Quadric, QEllipsoid, QCone, QCylinder, QTorus, QSuperquadric
+from shape.superquadric import SuperQuadric
+from shape.platonicShape import Cube, Dodecahedron, Icosahedron, Octahedron,Tetrahedron
+from shape.torus import Torus
 from util import Shader
 
 class SceneBuilder:
@@ -95,31 +101,32 @@ class SceneBuilder:
         objects.append(
             Tetrahedron(
                 self.shaders['mesh'],
-                'assets/tetrahedron.txt',
-                glm.translate(glm.mat4(1.0), glm.vec3(-2.0, 0.0, 0.0))
+                'var/tetrahedron.txt',
+                glm.translate(glm.mat4(1.0), glm.vec3(-2.0, 0.0, 0.0)),
+                color = glm.vec3(1.0, 0.25, 0.15)  # Red
             )
         )
-
+        
         # Add Cube
-        cube_vertices = self._create_cube(1.0, glm.vec3(0.8, 0.2, 0.2))  # Red cube
         objects.append(
-            Mesh(
+            Cube(
                 self.shaders['mesh'],
-                cube_vertices,
-                glm.translate(glm.mat4(1.0), glm.vec3(0.0, 0.0, 0.0))
+                'var/cube.txt',
+                glm.translate(glm.mat4(1.0), glm.vec3(0.0, 0.0, 0.0)),
+                color = glm.vec3(0.1, .40, 0.15)  # Green
             )
         )
-
+        
         # Add Octahedron
-        octahedron_vertices = self._create_octahedron(1.0, glm.vec3(0.2, 0.8, 0.2))  # Green octahedron
+        
         objects.append(
-            Mesh(
+            Octahedron(
                 self.shaders['mesh'],
-                octahedron_vertices,
-                glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0))
+                'var/octahedron.txt',
+                glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0)),
+                color = glm.vec3(0.5, 0.5, 1.0)  # Blue
             )
         )
-
         return objects
 
     def get_mode_2_objects(self) -> List[Renderable]:
@@ -129,15 +136,14 @@ class SceneBuilder:
         objects = []
 
         # Add Icosahedron
-        icosahedron_vertices = self._create_icosahedron(1.0, glm.vec3(0.1, 0.1, 0.8))  # Blue icosahedron
         objects.append(
-            Mesh(
+            Icosahedron(
                 self.shaders['mesh'],
-                icosahedron_vertices,
-                glm.translate(glm.mat4(1.0), glm.vec3(0.0, 0.0, 0.0))
+                'var/icosahedron.txt',
+                glm.translate(glm.mat4(1.0), glm.vec3(0.0, 0.0, 0.0)),
+                color = glm.vec3(1.0, 0.5, 0.5)  # Red
             )
         )
-
         return objects
 
     def get_mode_3_objects(self) -> List[Renderable]:
@@ -170,32 +176,36 @@ class SceneBuilder:
         objects.append(
             Sphere(
                 self.shaders['sphere'],
-                glm.vec3(-2.0, 0.0, 0.0),  # Center
-                1.0,
-                glm.vec3(1.0, 0.5, 0.5)  # Pink
+                glm.vec3(0.0, 0.0, 0.0),  # Center
+                1.0,  # Radius
+                glm.vec3(0.1, 0.7, 0.1),  # Light blue
+                glm.scale(glm.mat4(1.0), glm.vec3(1.0, 1.0, 1.0))
             )
         )
-
-        # Add Cylinder
-        cylinder_vertices = self._create_cylinder(1.0, 2.0, glm.vec3(0.5, 1.0, 0.5))  # Green cylinder
+        
         objects.append(
-            Mesh(
-                self.shaders['mesh'],
-                cylinder_vertices,
-                glm.translate(glm.mat4(1.0), glm.vec3(0.0, 0.0, 0.0))
+            Cylinder(
+                self.shaders['cylinder'],
+                height = 2.0,
+                radius = 0.5,
+                color = glm.vec3(0.1, 0.7, 0.1),
+                model = glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0))
             )
         )
-
-        # Add Cone
-        cone_vertices = self._create_cone(1.0, 2.0, glm.vec3(0.5, 0.5, 1.0))  # Blue cone
+        
         objects.append(
-            Mesh(
-                self.shaders['mesh'],
-                cone_vertices,
-                glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0))
+            Cone(
+                self.shaders['cone'],
+                height = 2.0,
+                radius = 0.5,
+                color = glm.vec3(0.1, 0.7, 0.1),
+                model = glm.translate(glm.mat4(1.0), glm.vec3(4.0, 0.0, 0.0))
             )
         )
+        
 
+        
+        
         return objects
 
     def get_mode_5_objects(self) -> List[Renderable]:
@@ -203,14 +213,13 @@ class SceneBuilder:
         Mode 5: Display Torus with tessellation or subdivision.
         """
         objects = []
-
-        # Add Torus
-        torus_vertices = self._create_torus(1.0, 0.3, glm.vec3(0.8, 0.8, 0.0))  # Yellow torus
+        
         objects.append(
-            Mesh(
-                self.shaders['mesh'],
-                torus_vertices,
-                glm.translate(glm.mat4(1.0), glm.vec3(0.0, 0.0, 0.0))
+            Torus(
+                self.shaders['torus'],
+                major_radius = 1.0,
+                minor_radius = 0.5,
+                color = glm.vec3(0.8, 0.6, 0.2)
             )
         )
 
@@ -232,15 +241,13 @@ class SceneBuilder:
             )
         )
 
-        # Add Dodecahedron
-        dodecahedron_vertices = self._create_dodecahedron(1.0, glm.vec3(0.6, 0.2, 0.8))  # Purple dodecahedron
         objects.append(
-            Mesh(
+            Dodecahedron(
                 self.shaders['mesh'],
-                dodecahedron_vertices,
-                glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0))
-            )
-        )
+                'var/dodecahedron.txt',
+                glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0)),
+                color = glm.vec3(0.5, 0.5, 1.0)  
+            ))
 
         return objects
 
@@ -251,9 +258,7 @@ class SceneBuilder:
         return self.objects
     
     
-    def get_objects(self) -> List[Renderable]:
-        """Return the list of objects in the scene"""
-        return self.objects 
+    
     
     def generate_city(self, shaders: dict, grid_size: int = 10, cell_size: float = 10.0):
         """Generate a city layout using a grid pattern."""

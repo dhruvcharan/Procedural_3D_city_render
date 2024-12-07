@@ -7,7 +7,7 @@ from .mesh import Mesh
 from util import Shader
 
 
-class Tetrahedron(Mesh):
+class Tetrahedron2(Mesh):
     color: glm.vec3 = glm.vec3(0.31, 0.5, 1.0)
     
     def __init__(self, 
@@ -65,10 +65,5 @@ class Tetrahedron(Mesh):
         
         self.vertices: glm.array = glm.array(glm.float32, *vertexList)
         
-        # Python does not support delegate constructors, 
-        # implementing a classmethod called "fromFile" is much more Pythonic.
-        # Yet, we invoke Mesh.__init__ for consistency with the C++ version...
         super().__init__(shader, self.vertices, model)
     
-    # Leave "render" method as-is as imlemented in class Mesh...
-

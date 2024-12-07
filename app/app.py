@@ -7,7 +7,8 @@ import glm
 from scene.scene_builder import SceneBuilder
 from shape.geometric_shape import GeometricShape
 from .window import Window
-from shape import Line, Mesh, Renderable, Sphere, Tetrahedron
+from shape import Line, Mesh, Renderable, Sphere
+from shape.tetrahedron import Tetrahedron2
 from util import Camera, Shader
 from util.display_mode import DisplayMode
 
@@ -63,17 +64,48 @@ class App(Window):
                    tesc='shader/sphere.tesc.glsl',
                    tese='shader/sphere.tese.glsl',
                    frag='shader/phong.frag.glsl')
-        self.quadricShader: Shader = \
-            Shader(vert='shader/quadric.vert.glsl',
-                   tesc='shader/quadric.tesc.glsl',
-                   tese='shader/quadric.tese.glsl',
-                   frag='shader/phong.frag.glsl')
-
+            
+        self.torusShader: Shader = \
+            Shader(vert='shader/sphere.vert.glsl',
+                   tesc = 'shader/sphere.tesc.glsl',
+                   tese = 'shader/torus.tese.glsl',
+                   frag = 'shader/phong.frag.glsl')
+            
+        self.cylinderShader: Shader = \
+            Shader(vert='shader/sphere.vert.glsl',
+                   tesc = 'shader/sphere.tesc.glsl',
+                   tese = 'shader/cylinder.tese.glsl',
+                   frag = 'shader/phong.frag.glsl')
+            
+        self.coneShader: Shader = \
+            Shader(vert='shader/sphere.vert.glsl',
+                   tesc = 'shader/sphere.tesc.glsl',
+                   tese = 'shader/cone.tese.glsl',
+                   frag = 'shader/phong.frag.glsl')
+            
+        self.ellipsoidShader: Shader = \
+            Shader(vert='shader/sphere.vert.glsl',
+                   tesc = 'shader/sphere.tesc.glsl',
+                   tese = 'shader/ellipsoid.tese.glsl',
+                   frag = 'shader/phong.frag.glsl')
+            
         self.super_quadric_shader: Shader = \
-            Shader(vert='shader/quadric.vert.glsl',
-                   tesc='shader/quadric.tesc.glsl',
-                   tese='shader/superquadric.tese.glsl',
-                   frag='shader/phong.frag.glsl')
+            Shader(vert = 'shader/sphere.vert.glsl',
+                   tesc = 'shader/sphere.tesc.glsl',
+                   tese = 'shader/superquadric.tese.glsl',
+                   frag = 'shader/phong.frag.glsl')
+        
+        # self.quadricShader: Shader = \
+        #     Shader(vert='shader/quadric.vert.glsl',
+        #            tesc='shader/quadric.tesc.glsl',
+        #            tese='shader/quadric.tese.glsl',
+        #            frag='shader/phong.frag.glsl')
+
+        # self.super_quadric_shader: Shader = \
+        #     Shader(vert='shader/quadric.vert.glsl',
+        #            tesc='shader/quadric.tesc.glsl',
+        #            tese='shader/quadric.tese.glsl',
+        #            frag='shader/phong.frag.glsl')
 
         # Objects to render.
         self.shapes: list[Renderable] = []
@@ -114,7 +146,7 @@ class App(Window):
         )
 
         self.shapes.append(
-            Tetrahedron(
+            Tetrahedron2(
                 self.meshShader,
                 'var/tetrahedron.txt',
                 glm.translate(glm.mat4(1.0), glm.vec3(-2.0, 0.0, 0.0))
@@ -155,8 +187,13 @@ class App(Window):
         self.lastMouseLeftPressPos: glm.dvec2 = glm.dvec2(0.0, 0.0)
 
         self.scene_builder = SceneBuilder()
-        self.scene_builder.shaders = {'mesh': self.meshShader, 'sphere': self.sphereShader,
-                                      'quadric': self.quadricShader, 'super_quadric': self.super_quadric_shader}
+        self.scene_builder.shaders = {'sphere': self.sphereShader,
+                                      'torus': self.torusShader,
+                                      'cylinder': self.cylinderShader,
+                                      'cone': self.coneShader,
+                                      'ellipsoid': self.ellipsoidShader,
+                                      'mesh': self.meshShader,
+                                      'super_quadric': self.super_quadric_shader}
         self.flight_mode = False
         self.flight_vertical = False
 
@@ -209,9 +246,8 @@ class App(Window):
         if action == GLFW_PRESS:
             # Check for '+' key
             if key == GLFW_KEY_EQUAL and (mods & GLFW_MOD_SHIFT):
-                # Subdivide all shapes in the current scene
                 for shape in app.shapes:
-                    if isinstance(shape, GeometricShape):
+                    if isinstance(shape, GeometricShape) or isinstance(shape, Mesh):
                         shape.subdivide()
 
     @staticmethod
@@ -256,6 +292,7 @@ class App(Window):
 
         if glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS:
             app.current_display_mode = DisplayMode.WIREFRAME
+            
         elif glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS:
             app.current_display_mode = DisplayMode.FLAT
         elif glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS:
@@ -302,11 +339,18 @@ class App(Window):
         elif glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS:
             app.shapes = app.scene_builder.get_mode_6_objects()
         elif glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS:  # Mode 7: City Scene
-            app.shapes = app.scene_builder.get_objects()
+            app.shapes = app.scene_builder.generate_city()
             app.flight_mode = True
 
         if glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS:
             app.flight_vertical = not app.flight_vertical
+
+        if glfwGetKey(window, GLFW_KEY_LEFT_BRACKET) == GLFW_PRESS:
+            app.current_display_mode = DisplayMode.WIREFRAME
+        elif glfwGetKey(window, GLFW_KEY_RIGHT_BRACKET) == GLFW_PRESS:
+            app.current_display_mode = DisplayMode.FLAT
+        elif glfwGetKey(window, GLFW_KEY_BACKSLASH) == GLFW_PRESS:
+            app.current_display_mode = DisplayMode.SMOOTH
 
     def __updateFlightCamera(self, deltaTime: float) -> None:
         """Update camera position for flight simulation"""
@@ -368,6 +412,15 @@ class App(Window):
         self.meshShader.setVec3('ViewPos', self.camera.position)
         self.meshShader.setVec3('lightPos', self.lightPos)
         self.meshShader.setVec3('lightColor', self.lightColor)
+        if self.current_display_mode == DisplayMode.WIREFRAME:
+            self.meshShader.setInt('shadingMode', 2)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        elif self.current_display_mode == DisplayMode.FLAT:
+            self.meshShader.setInt('shadingMode', 1)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        else: 
+            self.meshShader.setInt('shadingMode', 0)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
         self.sphereShader.use()
         self.sphereShader.setMat4('view', self.view)
@@ -375,22 +428,90 @@ class App(Window):
         self.sphereShader.setVec3('ViewPos', self.camera.position)
         self.sphereShader.setVec3('lightPos', self.lightPos)
         self.sphereShader.setVec3('lightColor', self.lightColor)
+        if self.current_display_mode == DisplayMode.WIREFRAME:
+            self.sphereShader.setInt('shadingMode', 2)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        elif self.current_display_mode == DisplayMode.FLAT:
+            self.sphereShader.setInt('shadingMode', 1)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        else: 
+            self.sphereShader.setInt('shadingMode', 0)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+            
+        self.cylinderShader.use()
+        self.cylinderShader.setMat4('view', self.view)
+        self.cylinderShader.setMat4('projection', self.projection)
+        self.cylinderShader.setVec3('ViewPos', self.camera.position)
+        self.cylinderShader.setVec3('lightPos', self.lightPos)
+        self.cylinderShader.setVec3('lightColor', self.lightColor)
+        if self.current_display_mode == DisplayMode.WIREFRAME:
+            self.cylinderShader.setInt('shadingMode', 2)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        elif self.current_display_mode == DisplayMode.FLAT:
+            self.cylinderShader.setInt('shadingMode', 1)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        else: 
+            self.cylinderShader.setInt('shadingMode', 0)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+            
+        self.coneShader.use()
+        self.coneShader.setMat4('view', self.view)
+        self.coneShader.setMat4('projection', self.projection)
+        self.coneShader.setVec3('ViewPos', self.camera.position)
+        self.coneShader.setVec3('lightPos', self.lightPos)
+        self.coneShader.setVec3('lightColor', self.lightColor)
+        if self.current_display_mode == DisplayMode.WIREFRAME:
+            self.coneShader.setInt('shadingMode', 2)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        elif self.current_display_mode == DisplayMode.FLAT:
+            self.coneShader.setInt('shadingMode', 1)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        else: 
+            self.coneShader.setInt('shadingMode', 0)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+            
+        self.torusShader.use()
+        self.torusShader.setMat4('view', self.view)
+        self.torusShader.setMat4('projection', self.projection)
+        self.torusShader.setVec3('ViewPos', self.camera.position)
+        self.torusShader.setVec3('lightPos', self.lightPos)
+        self.torusShader.setVec3('lightColor', self.lightColor)
+        if self.current_display_mode == DisplayMode.WIREFRAME:
+            self.torusShader.setInt('shadingMode', 2)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        elif self.current_display_mode == DisplayMode.FLAT:
+            self.torusShader.setInt('shadingMode', 1)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        else: 
+            self.torusShader.setInt('shadingMode', 0)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         
         
-        self.quadricShader.use()
-        self.quadricShader.setMat4('view', self.view)
-        self.quadricShader.setMat4('projection', self.projection)
-        self.quadricShader.setVec3('ViewPos', self.camera.position)
-        self.quadricShader.setVec3('lightPos', self.lightPos)
-        self.quadricShader.setVec3('lightColor', self.lightColor)
+        # self.quadricShader.use()
+        # self.quadricShader.setMat4('view', self.view)
+        # self.quadricShader.setMat4('projection', self.projection)
+        # self.quadricShader.setVec3('ViewPos', self.camera.position)
+        # self.quadricShader.setVec3('lightPos', self.lightPos)
+        # self.quadricShader.setVec3('lightColor', self.lightColor)
+        # if self.current_display_mode == DisplayMode.WIREFRAME:
+        #     self.quadricShader.setInt('shadingMode', 2)
+        #     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        # elif self.current_display_mode == DisplayMode.FLAT:
+        #     self.quadricShader.setInt('shadingMode', 1)
+        #     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        # else: 
+        #     self.quadricShader.setInt('shadingMode', 0)
+        #     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         
-        self.super_quadric_shader.use()
-        self.super_quadric_shader.setMat4('view', self.view)
-        self.super_quadric_shader.setMat4('projection', self.projection)
-        self.super_quadric_shader.setVec3('ViewPos', self.camera.position)
-        self.super_quadric_shader.setVec3('lightPos', self.lightPos)
-        self.super_quadric_shader.setVec3('lightColor', self.lightColor)
-
-        # Render all shapes.
+        self.coneShader.use()
+        self.coneShader.setMat4('view', self.view)
+        self.coneShader.setMat4('projection', self.projection)
+        self.coneShader.setVec3('ViewPos', self.camera.position)
+        self.coneShader.setVec3('lightPos', self.lightPos)
+        self.coneShader.setVec3('lightColor', self.lightColor)
+        
+        
         for s in self.shapes:
             s.render(t)
+
+   
