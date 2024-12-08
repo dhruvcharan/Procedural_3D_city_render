@@ -4,7 +4,6 @@ import glm
 from shape import Renderable,Mesh, Sphere
 from shape.cylinder import Cylinder
 from shape.cone import Cone
-from shape.quadric import Quadric, QEllipsoid, QCone, QCylinder, QTorus, QSuperquadric
 from shape.superquadric import SuperQuadric
 from shape.platonicShape import Cube, Dodecahedron, Icosahedron, Octahedron,Tetrahedron
 from shape.torus import Torus
@@ -189,7 +188,7 @@ class SceneBuilder:
                 height = 2.0,
                 radius = 0.5,
                 color = glm.vec3(0.1, 0.7, 0.1),
-                model = glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0))
+                model = (glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0)))
             )
         )
         
@@ -199,8 +198,8 @@ class SceneBuilder:
                 height = 2.0,
                 radius = 0.5,
                 color = glm.vec3(0.1, 0.7, 0.1),
-                model = glm.translate(glm.mat4(1.0), glm.vec3(4.0, 0.0, 0.0))
-            )
+                model = (glm.translate(glm.mat4(1.0), glm.vec3(3.0, 0.0, 0.0))
+            ))
         )
         
 
@@ -230,24 +229,23 @@ class SceneBuilder:
         Mode 6: Display Super-Quadrics and Dodecahedron.
         """
         objects = []
-
-        # Add Super-Quadrics (example: ellipsoid-like shape)
         objects.append(
-            Sphere(
-                self.shaders['sphere'],
-                glm.vec3(-2.0, 0.0, 0.0),  # Center
-                1.0,  # Radius
-                glm.vec3(0.8, 0.6, 0.2)  # Brownish
+            SuperQuadric(
+                self.shaders['superquadric'],
+                exponents = glm.vec3(3.5, 5.0, 0.0),
+                scale = glm.vec3(2.0, 1.0, 0.5),
+                color = glm.vec3(0.8, 0.6, 0.2),
+                model = glm.translate(glm.mat4(1.0), glm.vec3(0.0, 0.0, 0.0))
             )
         )
 
-        objects.append(
-            Dodecahedron(
-                self.shaders['mesh'],
-                'var/dodecahedron.txt',
-                glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0)),
-                color = glm.vec3(0.5, 0.5, 1.0)  
-            ))
+        # objects.append(
+        #     Dodecahedron(
+        #         self.shaders['mesh'],
+        #         'var/dodecahedron.txt',
+        #         glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0)),
+        #         color = glm.vec3(0.5, 0.5, 1.0)  
+        #     ))
 
         return objects
 
@@ -275,7 +273,6 @@ class SceneBuilder:
                 elif choice == "park":
                     self._add_park(shaders['mesh'], position)
                     
-    import random
 
     def generate_city_zoning(self,grid_size: int, cell_size: float, terrain_scale: float, height_scale: float):
         """Generate a city layout with zones and terrain sampling."""

@@ -1,4 +1,3 @@
-from shape.quadric import Quadric
 import glm
 import numpy as np
 import glm

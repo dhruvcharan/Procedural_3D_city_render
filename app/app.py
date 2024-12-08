@@ -91,23 +91,10 @@ class App(Window):
             
         self.super_quadric_shader: Shader = \
             Shader(vert = 'shader/sphere.vert.glsl',
-                   tesc = 'shader/sphere.tesc.glsl',
+                   tesc = 'shader/superquadric.tesc.glsl',
                    tese = 'shader/superquadric.tese.glsl',
                    frag = 'shader/phong.frag.glsl')
-        
-        # self.quadricShader: Shader = \
-        #     Shader(vert='shader/quadric.vert.glsl',
-        #            tesc='shader/quadric.tesc.glsl',
-        #            tese='shader/quadric.tese.glsl',
-        #            frag='shader/phong.frag.glsl')
-
-        # self.super_quadric_shader: Shader = \
-        #     Shader(vert='shader/quadric.vert.glsl',
-        #            tesc='shader/quadric.tesc.glsl',
-        #            tese='shader/quadric.tese.glsl',
-        #            frag='shader/phong.frag.glsl')
-
-        # Objects to render.
+            
         self.shapes: list[Renderable] = []
 
         self.shapes.append(
@@ -169,7 +156,7 @@ class App(Window):
         self.projection: glm.mat4 = glm.mat4(1.0)
 
         self.lightColor: glm.vec3 = glm.vec3(1.0, 1.0, 1.0)
-        self.lightPos: glm.vec3 = glm.vec3(10.0, -10.0, 10.0)
+        self.lightPos: glm.vec3 = glm.vec3(10.0, 10.0, 10.0)
 
         # Frontend GUI
         self.timeElapsedSinceLastFrame: float = 0.0
@@ -193,7 +180,7 @@ class App(Window):
                                       'cone': self.coneShader,
                                       'ellipsoid': self.ellipsoidShader,
                                       'mesh': self.meshShader,
-                                      'super_quadric': self.super_quadric_shader}
+                                      'superquadric': self.super_quadric_shader}
         self.flight_mode = False
         self.flight_vertical = False
 
@@ -486,29 +473,28 @@ class App(Window):
             self.torusShader.setInt('shadingMode', 0)
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         
+        # self.coneShader.use()
+        # self.coneShader.setMat4('view', self.view)
+        # self.coneShader.setMat4('projection', self.projection)
+        # self.coneShader.setVec3('ViewPos', self.camera.position)
+        # self.coneShader.setVec3('lightPos', self.lightPos)
+        # self.coneShader.setVec3('lightColor', self.lightColor)
         
-        # self.quadricShader.use()
-        # self.quadricShader.setMat4('view', self.view)
-        # self.quadricShader.setMat4('projection', self.projection)
-        # self.quadricShader.setVec3('ViewPos', self.camera.position)
-        # self.quadricShader.setVec3('lightPos', self.lightPos)
-        # self.quadricShader.setVec3('lightColor', self.lightColor)
-        # if self.current_display_mode == DisplayMode.WIREFRAME:
-        #     self.quadricShader.setInt('shadingMode', 2)
-        #     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-        # elif self.current_display_mode == DisplayMode.FLAT:
-        #     self.quadricShader.setInt('shadingMode', 1)
-        #     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-        # else: 
-        #     self.quadricShader.setInt('shadingMode', 0)
-        #     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-        
-        self.coneShader.use()
-        self.coneShader.setMat4('view', self.view)
-        self.coneShader.setMat4('projection', self.projection)
-        self.coneShader.setVec3('ViewPos', self.camera.position)
-        self.coneShader.setVec3('lightPos', self.lightPos)
-        self.coneShader.setVec3('lightColor', self.lightColor)
+        self.super_quadric_shader.use()
+        self.super_quadric_shader.setMat4('view', self.view)
+        self.super_quadric_shader.setMat4('projection', self.projection)
+        self.super_quadric_shader.setVec3('ViewPos', self.camera.position)
+        self.super_quadric_shader.setVec3('lightPos', self.lightPos)
+        self.super_quadric_shader.setVec3('lightColor', self.lightColor)
+        if self.current_display_mode == DisplayMode.WIREFRAME:
+            self.super_quadric_shader.setInt('shadingMode', 2)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        elif self.current_display_mode == DisplayMode.FLAT:
+            self.super_quadric_shader.setInt('shadingMode', 1)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        else:
+            self.super_quadric_shader.setInt('shadingMode', 0)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         
         
         for s in self.shapes:

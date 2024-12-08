@@ -1,6 +1,5 @@
 import copy
 from shape.glshape import GLShape
-from shape.quadric import Quadric
 import glm
 from OpenGL.GL import *
 import numpy as np
