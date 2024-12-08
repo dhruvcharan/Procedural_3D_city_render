@@ -13,9 +13,10 @@ class SceneBuilder:
     def __init__(self):
         self.objects: List[Renderable] = []
         self.shaders: dict = {}
-        self.grid_size: int = 5
-        self.cell_size: float = 10.0
-        self.grid_spacing: float = 1.0
+        self.grid_size: int = 10
+        self.cell_size: float = 15.0
+        self.terrain_scale: float = 20.0
+        self.height_scale: float = 5.0
         
         
     def add_sphere(self, shader: Shader, center: glm.vec3, radius: float, 
@@ -235,10 +236,10 @@ class SceneBuilder:
         objects.append(
             SuperQuadric(
                 self.shaders['superquadric'],
-                exponents = glm.vec3(3.5, 5.0, 0.0),
+                exponents = glm.vec3(0.65, .40, 0.0),
                 scale = glm.vec3(2.0, 1.0, 0.5),
                 color = glm.vec3(0.8, 0.6, 0.2),
-                model = glm.translate(glm.mat4(1.0), glm.vec3(0.0, 0.0, 0.0))
+                model = glm.translate(glm.mat4(1.0), glm.vec3(-4.0, -1.0, -3.0))
             )
         )
 
@@ -274,21 +275,33 @@ class SceneBuilder:
                     
     def sample_terrain_height(self, x: float, z: float, terrain_scale: float, height_scale: float) -> float:
         
+        # return glm.sin(x/terrain_scale) * glm.sin(z/terrain_scale) * height_scale
         return 0.0
     
-    def generate_city_zoning(self,grid_size: int, cell_size: float, terrain_scale: float, height_scale: float):
+    def generate_city_zoning(self):
         """Generate a city layout with zones and terrain sampling."""
-        zones = [[''] * grid_size for _ in range(grid_size)]
+        zones = [[''] * self.grid_size for _ in range(self.grid_size)]
         self.objects = []
-        for x in range(grid_size):
-            for z in range(grid_size):
+        total_grid_width = self.grid_size * self.cell_size
+        ground_color = glm.vec3(0.5, 0.35, 0.2)  # Brownish color
+        ground_position = glm.vec3(total_grid_width / 2.0, -0.41, total_grid_width / 2.0)  # Center it at the middle of the grid
+        self.objects.append(
+            Cube(
+            self.shaders['mesh'],
+            'var/cube.txt',
+            glm.translate(glm.mat4(1.0), ground_position) * glm.scale(glm.mat4(1.0), glm.vec3(total_grid_width, 0.1, total_grid_width)),
+            color=ground_color
+            )
+        )
+        for x in range(self.grid_size):
+            for z in range(self.grid_size):
                 zone_type = random.choices(
                     ['residential', 'commercial', 'park', 'stadium'], 
-                    weights=[0.5, 0.3, 0.15, 0.05]
+                    weights=[0.25, 0.25, 0.25, 0.25]
                 )[0]
                 zones[x][z] = zone_type
-                position = glm.vec3(x * cell_size, 0.0, z * cell_size)
-                position.y = self.sample_terrain_height(position.x, position.z, terrain_scale, height_scale)
+                position = glm.vec3(x * self.cell_size, 0.0, z * self.cell_size)
+                position.y = self.sample_terrain_height(position.x, position.z, self.terrain_scale, self.   height_scale)
 
                 if zone_type == 'residential':
                    self._add_residential(position)
@@ -309,8 +322,8 @@ class SceneBuilder:
         Each house: a small cube with a random height and a cone (roof).
         We'll place a few houses in a small block.
         """
-        block_size = 3
-        spacing = 2.0
+        block_size = int(self.cell_size // 2.5)  # Number of houses that fit into one cell
+        spacing = self.cell_size / block_size 
         base_pos = position - glm.vec3((block_size-1)*spacing/2.0, 0.0, (block_size-1)*spacing/2.0)
 
         for i in range(block_size):
@@ -344,14 +357,15 @@ class SceneBuilder:
         Add a commercial building (a tall cube or a cylinder if we like).
         If high_rise is True, create a taller building to simulate offices.
         """
+        building_width = self.cell_size*0.25
+        building_height = random.uniform(0.5*self.height_scale, 0.75*self.height_scale)
         if high_rise:
             # Tall building
-            building_height = random.uniform(5.0, 10.0)
             self.objects.append(
                 Cube(
                     self.shaders['mesh'],
                     'var/cube.txt',
-                    glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(2.0, building_height, 2.0)),
+                    glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(building_width, building_height, building_width)),
                     color = glm.vec3(0.2, 0.2, 0.8)  # Dark blue glass
                 )
             )
@@ -372,7 +386,7 @@ class SceneBuilder:
                 Cube(
                     self.shaders['mesh'],
                     'var/cube.txt',
-                    glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(3.0, 1.0, 3.0)),
+                    glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(building_width, 2.0, building_width)),
                     color = glm.vec3(0.3, 0.3, 0.3)  # Grayish
                 )
             )
@@ -382,12 +396,13 @@ class SceneBuilder:
         Add a park area: a flat green 'lawn' (cube scaled flat),
         plus a few trees (cylinders with cones).
         """
+        park_width = self.cell_size*0.8
         # Park ground
         self.objects.append(
             Cube(
                 self.shaders['mesh'],
                 'var/cube.txt',
-                glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(5.0, 0.1, 5.0)),
+                glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(park_width, 0.1, park_width)),
                 color = glm.vec3(0.1, 0.7, 0.1)  # Green lawn
             )
         )
@@ -427,8 +442,9 @@ class SceneBuilder:
         scaled appropriately.
         """
         # Stadium stands: a torus scaled to create an elliptical shape
+        stadium_width = self.cell_size*0.3
         stadium_model = glm.translate(glm.mat4(1.0), position)
-        stadium_model = glm.scale(stadium_model, glm.vec3(3.0, 1.0, 3.0))
+        stadium_model = glm.scale(stadium_model, glm.vec3(stadium_width, 1.0, stadium_width))
         self.objects.append(
             Torus(
                 self.shaders['torus'],
@@ -440,7 +456,7 @@ class SceneBuilder:
         )
 
         # Stadium field: a flat green ellipsoid (just a scaled sphere)
-        field_model = glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(2.0, 0.1, 2.0))
+        field_model = glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(stadium_width, 0.1, stadium_width))
         self.objects.append(
             Sphere(
                 self.shaders['sphere'],

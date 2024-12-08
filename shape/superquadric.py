@@ -3,15 +3,15 @@ import glm
 from OpenGL.GL import *
 import numpy as np
 
-from shape.glshape import GLShape
+from shape.geometric_shape import GeometricShape
 
-class SuperQuadric(GLShape):
+class SuperQuadric(GeometricShape):
     def __init__(self, shader, exponents: glm.vec3 = glm.vec3(1.0,1.0,0.0), scale: glm.vec3 = glm.vec3(1.0, 1.0, 1.0), model: glm.mat4 = glm.mat4(1.0), color: glm.vec3 = glm.vec3(0.3, 0.5, 0.7)):
         
         self.exponents = exponents
         self.scale = scale
         self.color = color
-        super().__init__(shader, model)
+        super().__init__(shader, model, color)
 
         self.center: glm.vec3 = glm.vec3(0.0, 0.0, 0.0)
         self.color: glm.vec3 = copy.deepcopy(color)

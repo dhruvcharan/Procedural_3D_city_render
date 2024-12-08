@@ -64,6 +64,15 @@ class Sphere(GLShape, Renderable):
         
     def subdivide(self):
         pass
+    
+    def scale_object(self, scale: glm.vec3):
+        self.radius *= scale.x
+        
+    def translate(self, offset: glm.vec3):
+        self.center += offset
+        
+    def rotate(self, angle: float, axis: glm.vec3):
+        pass
 
 
 

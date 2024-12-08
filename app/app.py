@@ -19,11 +19,21 @@ class App(Window):
         self.windowName: str = 'hw3'
         self.windowWidth: int = 1000
         self.windowHeight: int = 1000
+        self.grid_size = 10
+        self.cell_size = 15.0
+        self.terrain_scale = 20.0
+        self.height_scale = 5.0
+        
         self.flight_time = 20.0
         self.flight_speed = 0.5
-        self.flight_radius = 10.0
-        self.flight_height = 5.0
+        
+        self.flight_height = 50.0
+        self.center_x = self.grid_size * self.cell_size / 2.0
+        self.center_z = self.grid_size * self.cell_size / 2.0
+        self.center_y = self.height_scale * 0.85
+        self.flight_radius = (self.grid_size * self.cell_size) / 4.0
         self.current_display_mode = DisplayMode.SMOOTH
+        
         super().__init__(self.windowWidth, self.windowHeight, self.windowName)
 
         # GLFW boilerplate.
@@ -157,7 +167,7 @@ class App(Window):
         self.projection: glm.mat4 = glm.mat4(1.0)
 
         self.lightColor: glm.vec3 = glm.vec3(1.0, 1.0, 1.0)
-        self.lightPos: glm.vec3 = glm.vec3(10.0, 10.0, 10.0)
+        self.lightPos: glm.vec3 = glm.vec3(self.center_x, self.center_y+20.0, self.center_z)
 
         # Frontend GUI
         self.timeElapsedSinceLastFrame: float = 0.0
@@ -175,6 +185,10 @@ class App(Window):
         self.lastMouseLeftPressPos: glm.dvec2 = glm.dvec2(0.0, 0.0)
 
         self.scene_builder = SceneBuilder()
+        self.scene_builder.grid_size = self.grid_size
+        self.scene_builder.cell_size = self.cell_size
+        self.scene_builder.terrain_scale = self.terrain_scale
+        self.scene_builder.height_scale = self.height_scale
         self.scene_builder.shaders = {'sphere': self.sphereShader,
                                       'torus': self.torusShader,
                                       'cylinder': self.cylinderShader,
@@ -237,6 +251,35 @@ class App(Window):
                 for shape in app.shapes:
                     # if isinstance(shape, GeometricShape) or isinstance(shape, Mesh) or isinstance(shape,SuperQuadric):
                     shape.subdivide()
+                    
+            if key == GLFW_KEY_C or key == GLFW_KEY_X or key == GLFW_KEY_Z:
+                # Check if Shift is held (inverse the transformation if true)
+                inverse = (mods & GLFW_MOD_SHIFT) != 0
+                
+                # Handle the key press for each transformation
+                if key == GLFW_KEY_C:
+                    for shape in app.shapes:
+                        if isinstance(shape, GeometricShape) or isinstance(shape, Sphere):
+                            if not inverse:
+                                shape.rotate(10.0, glm.vec3(1.0, 0.0, 0.0))
+                            else:
+                                shape.rotate(-10.0, glm.vec3(1.0, 0.0, 0.0))
+    
+                if key == GLFW_KEY_X:
+                    for shape in app.shapes:
+                        if isinstance(shape, GeometricShape) or isinstance(shape, Sphere):
+                            if not inverse:
+                                shape.scale_object(glm.vec3(1.1, 1.1, 1.1))
+                            else:
+                                shape.scale_object(glm.vec3(1.0/1.1, 1.0/1.1, 1.0/1.1))
+    
+                elif key == GLFW_KEY_Z:
+                    for shape in app.shapes:
+                        if isinstance(shape, GeometricShape) or isinstance(shape, Sphere):
+                            if not inverse:
+                                shape.translate(glm.vec3(0.0, 0.0, 1.0))
+                            else:
+                                shape.translate(glm.vec3(0.0, 0.0, -1.0))
 
     @staticmethod
     def __mouseButtonCallback(window: GLFWwindow, button: int, action: int, mods: int) -> None:
@@ -332,10 +375,12 @@ class App(Window):
             grid_size = 10        # A 10x10 grid (100 cells total)
             cell_size = 15.0      # Each cell is 15 units wide/long
             terrain_scale = 20.0  # Controls how spread out the height changes are
-            height_scale = 5.0    # Controls the maximum height of the terrain
-            app.shapes = app.scene_builder.generate_city_zoning(grid_size, cell_size, terrain_scale, height_scale)
+            height_scale = 15.0    # Controls the maximum height of the terrain
+            # app.camera.position = glm.vec3(100.0, 100.0, 0.0)
+            app.camera.position = glm.vec3(app.center_x+app.flight_radius, app.center_y, app.center_z)
+            app.shapes = app.scene_builder.generate_city_zoning()
             app.flight_mode = True
-
+        
         if glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS:
             app.flight_vertical = not app.flight_vertical
 
@@ -347,20 +392,17 @@ class App(Window):
             app.current_display_mode = DisplayMode.SMOOTH
 
     def __updateFlightCamera(self, deltaTime: float) -> None:
-        """Update camera position for flight simulation"""
         if not self.flight_mode:
             return
 
         self.flight_time += deltaTime * self.flight_speed
 
         if self.flight_vertical:
-            # Vertical circular flight
             x = self.flight_radius * glm.cos(self.flight_time)
             y = self.flight_height + self.flight_radius * \
                 glm.sin(self.flight_time)
             z = 0.0
 
-            # Calculate look-at point (always looking at center)
             self.camera.position = glm.vec3(x, y, z)
             target = glm.vec3(0.0, self.flight_height, 0.0)
 
@@ -370,15 +412,12 @@ class App(Window):
             y = self.flight_height
             z = self.flight_radius * glm.sin(self.flight_time)
 
-            # Calculate look-at point (always looking at center)
             self.camera.position = glm.vec3(x, y, z)
             target = glm.vec3(0.0, 0.0, 0.0)
 
-        # Update camera orientation to look at the center
         direction = glm.normalize(target - self.camera.position)
         self.camera.front = direction
 
-        # Update camera's right and up vectors
         self.camera.right = glm.normalize(
             glm.cross(direction, glm.vec3(0.0, 1.0, 0.0)))
         self.camera.up = glm.normalize(glm.cross(self.camera.right, direction))

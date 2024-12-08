@@ -5,14 +5,15 @@ from OpenGL.GL import *
 import numpy as np
 from shape.glshape import GLShape
 import copy
+from shape.geometric_shape import GeometricShape
 
-class Torus(GLShape):
+class Torus(GeometricShape):
     
     def __init__(self, shader, major_radius: float = 1.0, minor_radius: float = 0.5, model: glm.mat4 = glm.mat4(1.0), color: glm.vec3 = glm.vec3(0.3, 0.5, 0.7)):
         self.major_radius = major_radius
         self.minor_radius = minor_radius
         self.color = color
-        super().__init__(shader, model)
+        super().__init__(shader, model,color)
         
         self.center : glm.vec3 = glm.vec3(0.0, 0.0, 0.0)
         self.color : glm.vec3 = copy.deepcopy(color)

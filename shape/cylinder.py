@@ -3,13 +3,14 @@ from shape.glshape import GLShape
 import glm
 from OpenGL.GL import *
 import numpy as np
+from shape.geometric_shape import GeometricShape
 
-class Cylinder(GLShape):
+class Cylinder(GeometricShape):
     def __init__(self, shader, height: float = 1.0, radius: float = 0.5, model: glm.mat4 = glm.mat4(1.0), color: glm.vec3 = glm.vec3(0.3, 0.5, 0.7)):
         self.height = height
         self.radius = radius
         self.color = color
-        super().__init__(shader, model)
+        super().__init__(shader, model, color)
 
 
         self.center : glm.vec3 = glm.vec3(0.0, 0.0, 0.0)
@@ -17,8 +18,8 @@ class Cylinder(GLShape):
         
         self.scale : glm.vec3 = glm.vec3(radius, height, 0.0)
         self.dummy : glm.array = glm.array(glm.float32, 0.0)
-        self.tess_level_inner = 64
-        self.tess_level_outer = 64
+        self.tess_level_inner = 32
+        self.tess_level_outer = 32
         
         self._initialize_buffers()
         
