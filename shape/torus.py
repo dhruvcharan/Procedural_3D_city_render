@@ -20,6 +20,9 @@ class Torus(GLShape):
         self.radii : glm.vec2 = glm.vec2(major_radius, minor_radius)
         self.dummy : glm.array = glm.array(glm.float32, 0.0)
         
+        self.tess_level_inner = 8
+        self.tess_level_outer = 8
+        
         self._initialize_buffers()
 
     def _initialize_buffers(self):
@@ -39,7 +42,9 @@ class Torus(GLShape):
         self.shader.setVec3('center', self.center)
         self.shader.setVec2('radii', self.radii)
         self.shader.setVec3('color', self.color)
-
+        self.shader.setFloat('tessLevelInner', self.tess_level_inner)
+        self.shader.setFloat('tessLevelOuter', self.tess_level_outer)
+        
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
         
@@ -51,3 +56,6 @@ class Torus(GLShape):
         
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
+    def subdivide(self):
+        self.tess_level_inner = min(64, self.tess_level_inner + 2)
+        self.tess_level_outer = min(64, self.tess_level_outer + 2)

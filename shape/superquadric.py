@@ -18,6 +18,8 @@ class SuperQuadric(GLShape):
         
         self.dummy: glm.array = glm.array(glm.float32, 0.0)  # Placeholder for buffer data
         self._initialize_buffers()
+        self.tess_level_inner = 8
+        self.tess_level_outer = 8
         
     def _initialize_buffers(self):
         glBindVertexArray(self.vao)
@@ -38,7 +40,8 @@ class SuperQuadric(GLShape):
         self.shader.setVec3('center', self.center)
         self.shader.setVec3('exponents', self.exponents)  # e1, e2
         self.shader.setVec3('scale', self.scale)  # x, y, z scaling factors
-        
+        self.shader.setFloat('tessLevelInner', self.tess_level_inner)
+        self.shader.setFloat('tessLevelOuter', self.tess_level_outer)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
         
@@ -49,3 +52,8 @@ class SuperQuadric(GLShape):
         glDrawArrays(GL_PATCHES, 0, 1)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
+        
+    def subdivide(self):
+        
+        self.tess_level_inner = min(64, self.tess_level_inner + 2)
+        self.tess_level_outer = min(64, self.tess_level_outer + 2)

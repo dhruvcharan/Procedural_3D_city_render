@@ -8,6 +8,7 @@ from scene.scene_builder import SceneBuilder
 from shape.geometric_shape import GeometricShape
 from .window import Window
 from shape import Line, Mesh, Renderable, Sphere
+from shape.superquadric import SuperQuadric
 from shape.tetrahedron import Tetrahedron2
 from util import Camera, Shader
 from util.display_mode import DisplayMode
@@ -67,25 +68,25 @@ class App(Window):
             
         self.torusShader: Shader = \
             Shader(vert='shader/sphere.vert.glsl',
-                   tesc = 'shader/sphere.tesc.glsl',
+                   tesc = 'shader/superquadric.tesc.glsl',
                    tese = 'shader/torus.tese.glsl',
                    frag = 'shader/phong.frag.glsl')
             
         self.cylinderShader: Shader = \
             Shader(vert='shader/sphere.vert.glsl',
-                   tesc = 'shader/sphere.tesc.glsl',
+                   tesc = 'shader/superquadric.tesc.glsl',
                    tese = 'shader/cylinder.tese.glsl',
                    frag = 'shader/phong.frag.glsl')
             
         self.coneShader: Shader = \
             Shader(vert='shader/sphere.vert.glsl',
-                   tesc = 'shader/sphere.tesc.glsl',
+                   tesc = 'shader/superquadric.tesc.glsl',
                    tese = 'shader/cone.tese.glsl',
                    frag = 'shader/phong.frag.glsl')
             
         self.ellipsoidShader: Shader = \
             Shader(vert='shader/sphere.vert.glsl',
-                   tesc = 'shader/sphere.tesc.glsl',
+                   tesc = 'shader/superquadric.tesc.glsl',
                    tese = 'shader/ellipsoid.tese.glsl',
                    frag = 'shader/phong.frag.glsl')
             
@@ -234,8 +235,8 @@ class App(Window):
             # Check for '+' key
             if key == GLFW_KEY_EQUAL and (mods & GLFW_MOD_SHIFT):
                 for shape in app.shapes:
-                    if isinstance(shape, GeometricShape) or isinstance(shape, Mesh):
-                        shape.subdivide()
+                    # if isinstance(shape, GeometricShape) or isinstance(shape, Mesh) or isinstance(shape,SuperQuadric):
+                    shape.subdivide()
 
     @staticmethod
     def __mouseButtonCallback(window: GLFWwindow, button: int, action: int, mods: int) -> None:
@@ -326,7 +327,13 @@ class App(Window):
         elif glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS:
             app.shapes = app.scene_builder.get_mode_6_objects()
         elif glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS:  # Mode 7: City Scene
-            app.shapes = app.scene_builder.generate_city()
+            # app.shapes = app.scene_builder.generate_city_zoning()
+            # app.flight_mode = True
+            grid_size = 10        # A 10x10 grid (100 cells total)
+            cell_size = 15.0      # Each cell is 15 units wide/long
+            terrain_scale = 20.0  # Controls how spread out the height changes are
+            height_scale = 5.0    # Controls the maximum height of the terrain
+            app.shapes = app.scene_builder.generate_city_zoning(grid_size, cell_size, terrain_scale, height_scale)
             app.flight_mode = True
 
         if glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS:

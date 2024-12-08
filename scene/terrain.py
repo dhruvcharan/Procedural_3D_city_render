@@ -19,8 +19,7 @@ def generate_terrain(shader: Shader, size: int, scale: float, height_scale: floa
                 0.3, 0.6, 0.2          # Color (greenish terrain)
             ])
     
-    indices = []  # Generate indices for the grid (optional: use triangle strips)
-    # Logic to create indices for triangle strips or triangles
+    indices = []  
     
     return glm.array(glm.float32, *vertices)
 

@@ -17,6 +17,8 @@ class Cone(GLShape):
         
         self.scale : glm.vec3 = glm.vec3(radius, height, 0.0)
         self.dummy : glm.array = glm.array(glm.float32, 0.0)
+        self.tess_level_inner = 64
+        self.tess_level_outer = 64
         
         self._initialize_buffers()
         
@@ -38,7 +40,8 @@ class Cone(GLShape):
         self.shader.setVec3('center', self.center)
         self.shader.setVec3('scale', self.scale)
         self.shader.setVec3('color', self.color)
-        
+        self.shader.setFloat('tessLevelInner', self.tess_level_inner)
+        self.shader.setFloat('tessLevelOuter', self.tess_level_outer)
         
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
@@ -51,3 +54,7 @@ class Cone(GLShape):
         
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
+        
+    def subdivide(self):
+        self.tess_level_inner = min(64, self.tess_level_inner + 2)
+        self.tess_level_outer = min(64, self.tess_level_outer + 2)

@@ -12,7 +12,10 @@ from util import Shader
 class SceneBuilder:
     def __init__(self):
         self.objects: List[Renderable] = []
-        self.shaders: dict = {} 
+        self.shaders: dict = {}
+        self.grid_size: int = 5
+        self.cell_size: float = 10.0
+        self.grid_spacing: float = 1.0
         
         
     def add_sphere(self, shader: Shader, center: glm.vec3, radius: float, 
@@ -239,13 +242,13 @@ class SceneBuilder:
             )
         )
 
-        # objects.append(
-        #     Dodecahedron(
-        #         self.shaders['mesh'],
-        #         'var/dodecahedron.txt',
-        #         glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0)),
-        #         color = glm.vec3(0.5, 0.5, 1.0)  
-        #     ))
+        objects.append(
+            Dodecahedron(
+                self.shaders['mesh'],
+                'var/dodecahedron.txt',
+                glm.translate(glm.mat4(1.0), glm.vec3(2.0, 0.0, 0.0)),
+                color = glm.vec3(0.5, 0.5, 1.0)  
+            ))
 
         return objects
 
@@ -258,26 +261,25 @@ class SceneBuilder:
     
     
     
-    def generate_city(self, shaders: dict, grid_size: int = 10, cell_size: float = 10.0):
-        """Generate a city layout using a grid pattern."""
-        for x in range(grid_size):
-            for z in range(grid_size):
-                position = glm.vec3(x * cell_size, 0.0, z * cell_size)
-                # Randomly decide what to place in each cell
-                choice = random.choice(["building", "stadium", "park", "road"])
+    # def generate_city(self, shaders: dict, grid_size: int = 5, cell_size: float = 10.0):
+    #     """Generate a city layout using a grid pattern."""
+    #     for x in range(grid_size):
+    #         for z in range(grid_size):
+    #             position = glm.vec3(x * cell_size, 0.0, z * cell_size)
+    #             # Randomly decide what to place in each cell
+    #             choice = random.choice(["building", "stadium", "park", "road"])
+                
 
-                if choice == "building":
-                    self._add_random_building(shaders['mesh'], position)
-                elif choice == "stadium":
-                    self._add_stadium(shaders['sphere'], position)
-                elif choice == "park":
-                    self._add_park(shaders['mesh'], position)
+                
                     
-
+    def sample_terrain_height(self, x: float, z: float, terrain_scale: float, height_scale: float) -> float:
+        
+        return 0.0
+    
     def generate_city_zoning(self,grid_size: int, cell_size: float, terrain_scale: float, height_scale: float):
         """Generate a city layout with zones and terrain sampling."""
         zones = [[''] * grid_size for _ in range(grid_size)]
-
+        self.objects = []
         for x in range(grid_size):
             for z in range(grid_size):
                 zone_type = random.choices(
@@ -289,31 +291,176 @@ class SceneBuilder:
                 position.y = self.sample_terrain_height(position.x, position.z, terrain_scale, height_scale)
 
                 if zone_type == 'residential':
-                   self._add_random_building(position, self.shaders['mesh'])
+                   self._add_residential(position)
                 elif zone_type == 'commercial':
-                    self._add_random_building(position, self.shaders['mesh'], high_rise=True)
+                    self._add_commercial(position, high_rise=True)
                 elif zone_type == 'park':
-                    self._add_park(position, self.shaders['mesh'])
+                    self._add_park(position)
                 elif zone_type == 'stadium':
-                    self._add_stadium(position, self.shaders['sphere'])
+                    self._add_stadium(position)
 
-        return zones
+        return self.objects
     
     
-    def _add_random_building(self, shader: Shader, position: glm.vec3) -> None:
-        """Add a random building to the scene"""
-        pass
-    
-    def create_icosaedron(self, radius: float, color: glm.vec3) -> glm.array:
-        """Create vertices for an icosahedron"""
-        pass
-    
-    
-    def _add_stadium(self, shader: Shader, position: glm.vec3) -> None:
-        """Add a stadium to the scene"""
-        pass
 
-    def _add_park(self, shader: Shader, position: glm.vec3) -> None:
-        """Add a park to the scene"""
-        pass
+    def _add_residential(self, position: glm.vec3) -> None:
+        """
+        Add a cluster of small houses (Cubes) at the given position.
+        Each house: a small cube with a random height and a cone (roof).
+        We'll place a few houses in a small block.
+        """
+        block_size = 3
+        spacing = 2.0
+        base_pos = position - glm.vec3((block_size-1)*spacing/2.0, 0.0, (block_size-1)*spacing/2.0)
+
+        for i in range(block_size):
+            for j in range(block_size):
+                house_pos = base_pos + glm.vec3(i*spacing, 0.0, j*spacing)
+                
+                house_height = random.uniform(0.5, 1.5)
+                
+                self.objects.append(
+                    Cube(
+                        self.shaders['mesh'],
+                        'var/cube.txt',
+                        glm.translate(glm.mat4(1.0), house_pos) * glm.scale(glm.mat4(1.0), glm.vec3(1.0, house_height, 1.0)),
+                        color = glm.vec3(0.7, 0.6, 0.5)  # Light brown
+                    )
+                )
+                # Roof: a cone placed on top of the cube
+                roof_pos = house_pos + glm.vec3(0.0, house_height, 0.0)
+                self.objects.append(
+                    Cone(
+                        self.shaders['cone'],
+                        height = 0.5,
+                        radius = 0.7,
+                        color = glm.vec3(0.5, 0.2, 0.1),  # Darker brown/red roof
+                        model = glm.translate(glm.mat4(1.0), roof_pos)
+                    )
+                )
+
+    def _add_commercial(self, position: glm.vec3, high_rise: bool = True) -> None:
+        """
+        Add a commercial building (a tall cube or a cylinder if we like).
+        If high_rise is True, create a taller building to simulate offices.
+        """
+        if high_rise:
+            # Tall building
+            building_height = random.uniform(5.0, 10.0)
+            self.objects.append(
+                Cube(
+                    self.shaders['mesh'],
+                    'var/cube.txt',
+                    glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(2.0, building_height, 2.0)),
+                    color = glm.vec3(0.2, 0.2, 0.8)  # Dark blue glass
+                )
+            )
+            # Optional: Antenna (a cylinder) on top
+            antenna_pos = position + glm.vec3(0.0, building_height, 0.0)
+            self.objects.append(
+                Cylinder(
+                    self.shaders['cylinder'],
+                    height = 1.0,
+                    radius = 0.1,
+                    color = glm.vec3(0.8, 0.8, 0.8),  # Gray antenna
+                    model = glm.translate(glm.mat4(1.0), antenna_pos)
+                )
+            )
+        else:
+            # Smaller commercial structure (like a shop)
+            self.objects.append(
+                Cube(
+                    self.shaders['mesh'],
+                    'var/cube.txt',
+                    glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(3.0, 1.0, 3.0)),
+                    color = glm.vec3(0.3, 0.3, 0.3)  # Grayish
+                )
+            )
+
+    def _add_park(self, position: glm.vec3) -> None:
+        """
+        Add a park area: a flat green 'lawn' (cube scaled flat),
+        plus a few trees (cylinders with cones).
+        """
+        # Park ground
+        self.objects.append(
+            Cube(
+                self.shaders['mesh'],
+                'var/cube.txt',
+                glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(5.0, 0.1, 5.0)),
+                color = glm.vec3(0.1, 0.7, 0.1)  # Green lawn
+            )
+        )
+
+        # Add a few trees
+        tree_count = random.randint(2, 5)
+        for _ in range(tree_count):
+            offset_x = random.uniform(-2.0, 2.0)
+            offset_z = random.uniform(-2.0, 2.0)
+            tree_pos = position + glm.vec3(offset_x, 0.1, offset_z)
+
+            # Tree trunk: cylinder
+            self.objects.append(
+                Cylinder(
+                    self.shaders['cylinder'],
+                    height = 1.0,
+                    radius = 0.1,
+                    color = glm.vec3(0.4, 0.2, 0.1),  # Brown trunk
+                    model = glm.translate(glm.mat4(1.0), tree_pos)
+                )
+            )
+            # Tree foliage: cone on top of the trunk
+            foliage_pos = tree_pos + glm.vec3(0.0, 1.0, 0.0)
+            self.objects.append(
+                Cone(
+                    self.shaders['cone'],
+                    height = 0.8,
+                    radius = 0.5,
+                    color = glm.vec3(0.0, 0.5, 0.0),  # Green foliage
+                    model = glm.translate(glm.mat4(1.0), foliage_pos)
+                )
+            )
+
+    def _add_stadium(self, position: glm.vec3) -> None:
+        """
+        Add a stadium: Use a torus (for stands) and a sphere (as a dome or field),
+        scaled appropriately.
+        """
+        # Stadium stands: a torus scaled to create an elliptical shape
+        stadium_model = glm.translate(glm.mat4(1.0), position)
+        stadium_model = glm.scale(stadium_model, glm.vec3(3.0, 1.0, 3.0))
+        self.objects.append(
+            Torus(
+                self.shaders['torus'],
+                major_radius = 1.0,
+                minor_radius = 0.3,
+                color = glm.vec3(0.8, 0.8, 0.8),  # Light gray
+                model = stadium_model
+            )
+        )
+
+        # Stadium field: a flat green ellipsoid (just a scaled sphere)
+        field_model = glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(2.0, 0.1, 2.0))
+        self.objects.append(
+            Sphere(
+                self.shaders['sphere'],
+                center = glm.vec3(0.0, 0.0, 0.0),
+                radius = 1.0,
+                color = glm.vec3(0.0, 0.5, 0.0),
+                model = field_model
+            )
+        )
+
+        # # Optional: A dome (a sphere) over the stadium, semi-transparent color (if transparency is supported)
+        # dome_model = glm.translate(glm.mat4(1.0), position + glm.vec3(0.0, 1.0, 0.0)) * glm.scale(glm.mat4(1.0), glm.vec3(3.0, 1.5, 3.0))
+        # self.objects.append(
+        #     Sphere(
+        #         shader,
+        #         center = glm.vec3(0.0),
+        #         radius = 1.0,
+        #         color = glm.vec3(0.7, 0.7, 0.9),  # Slightly bluish-white
+        #         model = dome_model
+        #     )
+        # )    
+        
     
