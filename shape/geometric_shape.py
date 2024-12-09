@@ -50,3 +50,8 @@ class GeometricShape(Renderable):
     def scale_object(self, scale: glm.vec3):
         self.model = glm.scale(self.model, scale)
     
+    def set_shading_mode(self, mode: int):
+        self.shader.use()
+        self.shader.setInt('shadingMode', mode)
+        return self
+    

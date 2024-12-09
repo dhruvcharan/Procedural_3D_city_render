@@ -17,22 +17,24 @@ from util.display_mode import DisplayMode
 class App(Window):
     def __init__(self):
         self.windowName: str = 'hw3'
-        self.windowWidth: int = 1000
-        self.windowHeight: int = 1000
+        self.windowWidth: int = 1920
+        self.windowHeight: int = 1080
         self.grid_size = 10
-        self.cell_size = 15.0
+        self.cell_size = 5.0
         self.terrain_scale = 20.0
-        self.height_scale = 5.0
+        self.height_scale = 25.0
         
         self.flight_time = 20.0
         self.flight_speed = 0.5
         
         self.flight_height = 50.0
-        self.center_x = self.grid_size * self.cell_size / 2.0
-        self.center_z = self.grid_size * self.cell_size / 2.0
+        self.center_x = self.grid_size * self.cell_size 
+        self.center_z = self.grid_size * self.cell_size 
         self.center_y = self.height_scale * 0.85
-        self.flight_radius = (self.grid_size * self.cell_size) / 4.0
+        self.flight_radius = (self.grid_size * self.cell_size)/1
         self.current_display_mode = DisplayMode.SMOOTH
+        self.prev_shape = None
+        self.debugMousePos: bool = False
         
         super().__init__(self.windowWidth, self.windowHeight, self.windowName)
 
@@ -72,7 +74,7 @@ class App(Window):
 
         self.sphereShader: Shader = \
             Shader(vert='shader/sphere.vert.glsl',
-                   tesc='shader/sphere.tesc.glsl',
+                   tesc='shader/superquadric.tesc.glsl',
                    tese='shader/sphere.tese.glsl',
                    frag='shader/phong.frag.glsl')
             
@@ -175,7 +177,6 @@ class App(Window):
         self.mousePressed: bool = False
         self.mousePos: glm.dvec2 = glm.dvec2(0.0, 0.0)
 
-        self.debugMousePos: bool = False
 
         # Note lastMouseLeftClickPos is different from lastMouseLeftPressPos.
         # If you press left button (and hold it there) and move the mouse,
@@ -198,6 +199,10 @@ class App(Window):
                                       'superquadric': self.super_quadric_shader}
         self.flight_mode = False
         self.flight_vertical = False
+
+        # Add these new instance variables
+        self.selected_shape = None
+        self.last_screen_pos = None
 
     def run(self) -> None:
         while not glfwWindowShouldClose(self.window):
@@ -246,40 +251,42 @@ class App(Window):
         app: App = glfwGetWindowUserPointer(window)
 
         if action == GLFW_PRESS:
-            # Check for '+' key
+            # Update selected shape when mouse moves
+            
             if key == GLFW_KEY_EQUAL and (mods & GLFW_MOD_SHIFT):
-                for shape in app.shapes:
-                    # if isinstance(shape, GeometricShape) or isinstance(shape, Mesh) or isinstance(shape,SuperQuadric):
-                    shape.subdivide()
+                if app.selected_shape:
+                    app.selected_shape.subdivide()
                     
             if key == GLFW_KEY_C or key == GLFW_KEY_X or key == GLFW_KEY_Z:
-                # Check if Shift is held (inverse the transformation if true)
+                if not app.selected_shape:
+                    return
+                    
+                # Check if Shift/Alt/Ctrl is held
                 inverse = (mods & GLFW_MOD_SHIFT) != 0
+                alt_axis = (mods & GLFW_MOD_ALT) != 0  
+                ctrl_axis = (mods & GLFW_MOD_CONTROL) != 0
                 
-                # Handle the key press for each transformation
+                # Determine rotation axis based on modifier
+                rot_axis = glm.vec3(1.0, 0.0, 0.0)  # Default X axis
+                if alt_axis:
+                    rot_axis = glm.vec3(0.0, 1.0, 0.0)  # Y axis
+                elif ctrl_axis:
+                    rot_axis = glm.vec3(0.0, 0.0, 1.0)  # Z axis
+                
+                # Handle transformations
                 if key == GLFW_KEY_C:
-                    for shape in app.shapes:
-                        if isinstance(shape, GeometricShape) or isinstance(shape, Sphere):
-                            if not inverse:
-                                shape.rotate(10.0, glm.vec3(1.0, 0.0, 0.0))
-                            else:
-                                shape.rotate(-10.0, glm.vec3(1.0, 0.0, 0.0))
-    
-                if key == GLFW_KEY_X:
-                    for shape in app.shapes:
-                        if isinstance(shape, GeometricShape) or isinstance(shape, Sphere):
-                            if not inverse:
-                                shape.scale_object(glm.vec3(1.1, 1.1, 1.1))
-                            else:
-                                shape.scale_object(glm.vec3(1.0/1.1, 1.0/1.1, 1.0/1.1))
-    
+                    angle = -10.0 if inverse else 10.0
+                    app.selected_shape.rotate(angle, rot_axis)
+                    
+                elif key == GLFW_KEY_X:
+                    scale = 1.0/1.1 if inverse else 1.1
+                    app.selected_shape.scale_object(glm.vec3(scale))
+                    
                 elif key == GLFW_KEY_Z:
-                    for shape in app.shapes:
-                        if isinstance(shape, GeometricShape) or isinstance(shape, Sphere):
-                            if not inverse:
-                                shape.translate(glm.vec3(0.0, 0.0, 1.0))
-                            else:
-                                shape.translate(glm.vec3(0.0, 0.0, -1.0))
+                    dist = -1.0 if inverse else 1.0
+                    # Translate along the selected axis
+                    trans = rot_axis * dist
+                    app.selected_shape.translate(trans)
 
     @staticmethod
     def __mouseButtonCallback(window: GLFWwindow, button: int, action: int, mods: int) -> None:
@@ -293,6 +300,8 @@ class App(Window):
                 # C++: copy assign is copy; Python: it's reference!
                 app.lastMouseLeftClickPos = copy.deepcopy(app.mousePos)
                 app.lastMouseLeftPressPos = copy.deepcopy(app.mousePos)
+                
+                app.selected_shape = app.get_closest_shape(app.mousePos)
 
                 if app.debugMousePos:
                     print(f'mouseLeftPress @ {app.mousePos}')
@@ -370,26 +379,28 @@ class App(Window):
         elif glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS:
             app.shapes = app.scene_builder.get_mode_6_objects()
         elif glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS:  # Mode 7: City Scene
-            # app.shapes = app.scene_builder.generate_city_zoning()
-            # app.flight_mode = True
-            grid_size = 10        # A 10x10 grid (100 cells total)
-            cell_size = 15.0      # Each cell is 15 units wide/long
-            terrain_scale = 20.0  # Controls how spread out the height changes are
-            height_scale = 15.0    # Controls the maximum height of the terrain
-            # app.camera.position = glm.vec3(100.0, 100.0, 0.0)
-            app.camera.position = glm.vec3(app.center_x+app.flight_radius, app.center_y, app.center_z)
+            app.camera.position = glm.vec3(app.center_x/2, app.center_y, app.center_z/2)
             app.shapes = app.scene_builder.generate_city_zoning()
             app.flight_mode = True
         
         if glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS:
             app.flight_vertical = not app.flight_vertical
-
+            
+        if glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS:
+            app.flight_mode = not app.flight_mode
+        if glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS:
+            app.camera.position = glm.vec3(app.center_x//2, app.center_y*4, app.center_z//2)
+            app.camera.front = glm.vec3(0.0, 0.0, -1.0)
         if glfwGetKey(window, GLFW_KEY_LEFT_BRACKET) == GLFW_PRESS:
             app.current_display_mode = DisplayMode.WIREFRAME
         elif glfwGetKey(window, GLFW_KEY_RIGHT_BRACKET) == GLFW_PRESS:
             app.current_display_mode = DisplayMode.FLAT
         elif glfwGetKey(window, GLFW_KEY_BACKSLASH) == GLFW_PRESS:
             app.current_display_mode = DisplayMode.SMOOTH
+        elif glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS:
+            print(f'Camera position: {app.camera.position}')
+            print(f'Camera front: {app.camera.front}')
+            print(f'Camera up: {app.camera.up}')
 
     def __updateFlightCamera(self, deltaTime: float) -> None:
         if not self.flight_mode:
@@ -398,19 +409,19 @@ class App(Window):
         self.flight_time += deltaTime * self.flight_speed
 
         if self.flight_vertical:
-            x = self.flight_radius * glm.cos(self.flight_time)
+            x = self.center_x+ self.flight_radius * glm.cos(self.flight_time)
             y = self.flight_height + self.flight_radius * \
                 glm.sin(self.flight_time)
-            z = 0.0
+            z = self.center_z
 
             self.camera.position = glm.vec3(x, y, z)
             target = glm.vec3(0.0, self.flight_height, 0.0)
 
         else:
             # Horizontal circular flight
-            x = self.flight_radius * glm.cos(self.flight_time)
+            x =  self.center_x+ self.flight_radius * glm.cos(self.flight_time)
             y = self.flight_height
-            z = self.flight_radius * glm.sin(self.flight_time)
+            z = self.center_z + self.flight_radius * glm.sin(self.flight_time)
 
             self.camera.position = glm.vec3(x, y, z)
             target = glm.vec3(0.0, 0.0, 0.0)
@@ -433,7 +444,7 @@ class App(Window):
         self.projection = glm.perspective(glm.radians(self.camera.zoom),
                                           self.windowWidth / self.windowHeight,
                                           0.01,
-                                          100.0)
+                                          400.0)
 
         self.lineShader.use()
         self.lineShader.setMat4('view', self.view)
@@ -545,5 +556,45 @@ class App(Window):
         
         for s in self.shapes:
             s.render(t)
+
+    def get_closest_shape(self, mouse_pos):
+    
+        closest_dist = float('inf')
+        closest_shape = None
+        curr_shape_color = None
+
+        # Convert mouse position to NDC coordinates (-1 to 1)
+        ndc_x = (2.0 * mouse_pos.x) / self.windowWidth - 1.0
+        ndc_y = (2.0 * mouse_pos.y) / self.windowHeight - 1.0
+
+        for shape in self.shapes:
+            if not curr_shape_color:
+                curr_shape_color = shape.color
+            model_pos = glm.vec3(shape.model[3])
+
+            clip_pos = self.projection * self.view * glm.vec4(model_pos, 1.0)
+
+            if clip_pos.w != 0:
+                ndc_pos = glm.vec3(clip_pos) / clip_pos.w
+            else:
+                continue
+
+            dist = glm.length(glm.vec2(ndc_pos) - glm.vec2(ndc_x, ndc_y))
+
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_shape = shape
+        
+        if self.prev_shape and self.prev_shape != closest_shape:
+            self.prev_shape.color = self.prev_shape.original_color  
+            
+        if closest_shape:
+            if not hasattr(closest_shape, 'original_color'):
+                closest_shape.original_color = closest_shape.color  
+            
+            closest_shape.color = glm.vec3(1.0, 1.0, 1.0)  
+        self.prev_shape = closest_shape
+
+        return closest_shape
 
    

@@ -13,8 +13,10 @@ class Mesh(GLShape, Renderable):
     def __init__(self, 
                  shader: Shader, 
                  vertices: glm.array, 
-                 model: glm.mat4 = glm.mat4(1.0)):
+                 model: glm.mat4 = glm.mat4(1.0),
+                 color: glm.vec3 = glm.vec3(0.3, 0.5, 0.7)):
         
+        self.color = color
         assert vertices.element_type == glm.float32 and vertices.length % (9 * 3) == 0, \
                'vertices should be alm.array of dtype glm.float32, ' \
                'each nine glm.flost32s constitute a vertex (pos, normal, color), ' \
@@ -65,6 +67,7 @@ class Mesh(GLShape, Renderable):
     def render(self, timeElapsedSinceLastFrame: int) -> None:
         self.shader.use()
         self.shader.setMat4("model", self.model)
+        
 
         glBindVertexArray(self.vao)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
@@ -153,5 +156,17 @@ class Mesh(GLShape, Renderable):
                     self.vertices.ptr,
                     GL_STATIC_DRAW)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
-                
+    
+    def translate(self, offset: glm.vec3):
+        self.model = glm.translate(self.model, offset)
 
+    def rotate(self, angle: float, axis: glm.vec3):
+        self.model = glm.rotate(self.model, glm.radians(angle), axis)
+
+    def scale_object(self, scale: glm.vec3):
+        self.model = glm.scale(self.model, scale)
+        
+    def set_shading_mode(self, mode: int):
+        self.shader.use()
+        self.shader.setInt('shadingMode', mode)
+        return self

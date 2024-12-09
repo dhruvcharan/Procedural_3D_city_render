@@ -8,7 +8,7 @@ from shape.superquadric import SuperQuadric
 from shape.platonicShape import Cube, Dodecahedron, Icosahedron, Octahedron,Tetrahedron
 from shape.torus import Torus
 from util import Shader
-
+import noise
 class SceneBuilder:
     def __init__(self):
         self.objects: List[Renderable] = []
@@ -262,66 +262,167 @@ class SceneBuilder:
     
     
     
-    # def generate_city(self, shaders: dict, grid_size: int = 5, cell_size: float = 10.0):
-    #     """Generate a city layout using a grid pattern."""
-    #     for x in range(grid_size):
-    #         for z in range(grid_size):
-    #             position = glm.vec3(x * cell_size, 0.0, z * cell_size)
-    #             # Randomly decide what to place in each cell
-    #             choice = random.choice(["building", "stadium", "park", "road"])
-                
+    
+    
+    def generate_terrain(self, size: int, scale: float, height_scale: float) -> glm.array:
+        vertices = []
+        self.height_map = [[0.0] * size for _ in range(size)]  # Shared height map for sampling
+        normals = [[glm.vec3(0.0, 0.0, 0.0) for _ in range(size)] for _ in range(size)]
 
+        for z in range(size):
+            for x in range(size):
+                height = noise.pnoise2(x / scale, z / scale, octaves=6, persistence=0.6, lacunarity=2.2) * height_scale
+                self.height_map[z][x] = height  # Store height for later use
+
+        for z in range(size - 1):
+            for x in range(size - 1):
+                # Get height from the precomputed height map
+                p1 = [x * self.cell_size, self.height_map[z][x], z * self.cell_size]
+                p2 = [(x + 1) * self.cell_size, self.height_map[z][x + 1], z * self.cell_size]
+                p3 = [x * self.cell_size, self.height_map[z + 1][x], (z + 1) * self.cell_size]
+                p4 = [(x + 1) * self.cell_size, self.height_map[z + 1][x + 1], (z + 1) * self.cell_size]
+
+                # Color based on height
+                c = [0.5, 0.35 + self.height_map[z][x] * 0.05, 0.2]
                 
-                    
-    def sample_terrain_height(self, x: float, z: float, terrain_scale: float, height_scale: float) -> float:
+                # Triangle 1
+                vertices.extend(p1 + [0, 1, 0] + c)
+                vertices.extend(p3 + [0, 1, 0] + c)
+                vertices.extend(p2 + [0, 1, 0] + c)
+                
+                # Triangle 2
+                vertices.extend(p3 + [0, 1, 0] + c)
+                vertices.extend(p4 + [0, 1, 0] + c)
+                vertices.extend(p2 + [0, 1, 0] + c)
+
+        return glm.array(glm.float32, *vertices)
+
+    def generate_flat_terrain(self, size: int, scale: float, height_scale: float,cell_size) -> glm.array:
+        vertices = []
+        self.flat_height_map = [[0.0] * size for _ in range(size)]  # Shared height map for sampling
+        color = glm.vec3(0.5, 0.35, 0.2)  # Brown color for the terrain
+        for z in range(size - 1):
+            for x in range(size - 1):
+                # Four vertices for the current grid cell (each cell has 2 triangles)
+                p1 = [x * cell_size, 0.0, z * cell_size]  # Bottom-left
+                p2 = [(x + 1) * cell_size, 0.0, z * cell_size]  # Bottom-right
+                p3 = [x * cell_size, 0.0, (z + 1) * cell_size]  # Top-left
+                p4 = [(x + 1) * cell_size, 0.0, (z + 1) * cell_size]  # Top-right
+
+                # Normals for each vertex (all pointing up for a flat terrain)
+                normal = [0.0, 1.0, 0.0]
+
+                # Color for each vertex (all vertices have the same color)
+                r, g, b = color.x, color.y, color.z
+
+                # Add two triangles per cell (p1, p3, p2) and (p3, p4, p2)
+                # Triangle 1
+                vertices.extend(p1 + normal + [r, g, b])  # Vertex 1
+                vertices.extend(p3 + normal + [r, g, b])  # Vertex 2
+                vertices.extend(p2 + normal + [r, g, b])  # Vertex 3
+
+                # Triangle 2
+                vertices.extend(p3 + normal + [r, g, b])  # Vertex 1
+                vertices.extend(p4 + normal + [r, g, b])  # Vertex 2
+                vertices.extend(p2 + normal + [r, g, b])  # Vertex 3
+
+        return glm.array(glm.float32, *vertices)
+                        
+    
+    
+    def sample_terrain_height(self, x: float, z: float) -> float:
+    
+        grid_x = int(x // self.cell_size)
+        grid_z = int(z // self.cell_size)
         
-        # return glm.sin(x/terrain_scale) * glm.sin(z/terrain_scale) * height_scale
-        return 0.0
+        if grid_x < 0 or grid_z < 0 or grid_x >= self.grid_size - 1 or grid_z >= self.grid_size - 1:
+            return 0.0  # Out of bounds
+
+        # Interpolate height from the four corners of the cell
+        local_x = (x % self.cell_size) / self.cell_size
+        local_z = (z % self.cell_size) / self.cell_size
+
+        h1 = self.height_map[grid_z][grid_x]
+        h2 = self.height_map[grid_z][grid_x + 1]
+        h3 = self.height_map[grid_z + 1][grid_x]
+        h4 = self.height_map[grid_z + 1][grid_x + 1]
+
+        # Bilinear interpolation
+        height_top = h1 * (1 - local_x) + h2 * local_x
+        height_bottom = h3 * (1 - local_x) + h4 * local_x
+        height = height_top * (1 - local_z) + height_bottom * local_z
+        
+        return height
+    
+    
     
     def generate_city_zoning(self):
         """Generate a city layout with zones and terrain sampling."""
-        zones = [[''] * self.grid_size for _ in range(self.grid_size)]
         self.objects = []
-        total_grid_width = self.grid_size * self.cell_size
-        ground_color = glm.vec3(0.5, 0.35, 0.2)  # Brownish color
-        ground_position = glm.vec3(total_grid_width / 2.0, -0.41, total_grid_width / 2.0)  # Center it at the middle of the grid
+        self.zones = [[''] * self.grid_size for _ in range(self.grid_size)]
+        
+        # Generate terrain with height map
+        terrain_vertices = self.generate_terrain(
+            size=self.grid_size, 
+            scale=self.terrain_scale, 
+            height_scale=self.height_scale
+        )
+        
+        # flat_terrain_vertices = self.generate_flat_terrain(
+        #     size=self.grid_size, 
+        #     scale=self.terrain_scale, 
+        #     height_scale=self.height_scale,
+        #     cell_size=self.cell_size
+        # )
+       
+
+        # Add the terrain as a mesh
         self.objects.append(
-            Cube(
-            self.shaders['mesh'],
-            'var/cube.txt',
-            glm.translate(glm.mat4(1.0), ground_position) * glm.scale(glm.mat4(1.0), glm.vec3(total_grid_width, 0.1, total_grid_width)),
-            color=ground_color
+            Mesh(
+                self.shaders['mesh'],
+                terrain_vertices,
+                glm.translate(glm.mat4(1.0), glm.vec3(0.0, 0.0, 0.0))
             )
         )
+        # self.objects.append(
+        #     Mesh(
+        #         self.shaders['mesh'],
+        #         flat_terrain_vertices,
+        #         glm.translate(glm.mat4(1.0), glm.vec3(0.0, 0.0, 0.0))
+        #     )
+        # )
+        
+        # Generate city zones and objects
         for x in range(self.grid_size):
             for z in range(self.grid_size):
+                # Randomly determine the type of zone
                 zone_type = random.choices(
                     ['residential', 'commercial', 'park', 'stadium'], 
-                    weights=[0.25, 0.25, 0.25, 0.25]
+                    weights=[0.4, 0.3, 0.2, 0.1]
                 )[0]
-                zones[x][z] = zone_type
+                self.zones[x][z] = zone_type
+                
+                # Sample terrain height for this grid cell
                 position = glm.vec3(x * self.cell_size, 0.0, z * self.cell_size)
-                position.y = self.sample_terrain_height(position.x, position.z, self.terrain_scale, self.   height_scale)
-
+                # position.y = self.height_map[z][x]  # Directly read height from height_map
+                position.y = self.sample_terrain_height(position.x, position.z)  # Sample accurate terrain height
+                # position.y = 0.0  # Flat terrain
+                # Add objects based on the zone type
                 if zone_type == 'residential':
-                   self._add_residential(position)
+                    self._add_residential(position)
                 elif zone_type == 'commercial':
-                    self._add_commercial(position, high_rise=True)
+                    random_high_rise = random.choice([True, False])
+                    self._add_commercial(position, random_high_rise)
                 elif zone_type == 'park':
                     self._add_park(position)
                 elif zone_type == 'stadium':
                     self._add_stadium(position)
 
         return self.objects
-    
-    
+
 
     def _add_residential(self, position: glm.vec3) -> None:
-        """
-        Add a cluster of small houses (Cubes) at the given position.
-        Each house: a small cube with a random height and a cone (roof).
-        We'll place a few houses in a small block.
-        """
+        """Add a cluster of small houses (Cubes) at the given position."""
         block_size = int(self.cell_size // 2.5)  # Number of houses that fit into one cell
         spacing = self.cell_size / block_size 
         base_pos = position - glm.vec3((block_size-1)*spacing/2.0, 0.0, (block_size-1)*spacing/2.0)
@@ -329,82 +430,84 @@ class SceneBuilder:
         for i in range(block_size):
             for j in range(block_size):
                 house_pos = base_pos + glm.vec3(i*spacing, 0.0, j*spacing)
+                house_pos.y = self.sample_terrain_height(house_pos.x, house_pos.z)  # Sample accurate terrain height
                 
                 house_height = random.uniform(0.5, 1.5)
-                
                 self.objects.append(
                     Cube(
                         self.shaders['mesh'],
                         'var/cube.txt',
-                        glm.translate(glm.mat4(1.0), house_pos) * glm.scale(glm.mat4(1.0), glm.vec3(1.0, house_height, 1.0)),
-                        color = glm.vec3(0.7, 0.6, 0.5)  # Light brown
-                    )
+                        glm.translate(glm.mat4(1.0), house_pos + glm.vec3(0.0, 0.5 * house_height, 0.0)) * glm.scale(glm.mat4(1.0), glm.vec3(1.0, house_height, 1.0)),
+                        color=glm.vec3(0.7, 0.6, 0.5)  # Light brown
+                    ).set_shading_mode(1)
                 )
-                # Roof: a cone placed on top of the cube
-                roof_pos = house_pos + glm.vec3(0.0, house_height, 0.0)
+                
+                # Roof
+                roof_height = 0.5
+                roof_pos = house_pos + glm.vec3(0.0, house_height+0.5*roof_height, 0.0)
                 self.objects.append(
                     Cone(
                         self.shaders['cone'],
-                        height = 0.5,
-                        radius = 0.7,
-                        color = glm.vec3(0.5, 0.2, 0.1),  # Darker brown/red roof
-                        model = glm.translate(glm.mat4(1.0), roof_pos)
-                    )
+                        height=0.5,
+                        radius=0.7,
+                        color=glm.vec3(0.5, 0.2, 0.1),
+                        model=glm.translate(glm.mat4(1.0), roof_pos)
+                    ).set_shading_mode(1)
                 )
 
+
     def _add_commercial(self, position: glm.vec3, high_rise: bool = True) -> None:
-        """
-        Add a commercial building (a tall cube or a cylinder if we like).
-        If high_rise is True, create a taller building to simulate offices.
-        """
-        building_width = self.cell_size*0.25
-        building_height = random.uniform(0.5*self.height_scale, 0.75*self.height_scale)
+        """Add a commercial building (cube or high-rise)."""
+        position.y = self.sample_terrain_height(position.x, position.z)  # Sample accurate terrain height
+        
+        building_width = self.cell_size * 0.25
+        building_height = random.uniform(0.5 * self.height_scale, 0.75 * self.height_scale)
         if high_rise:
-            # Tall building
             self.objects.append(
                 Cube(
                     self.shaders['mesh'],
                     'var/cube.txt',
-                    glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(building_width, building_height, building_width)),
-                    color = glm.vec3(0.2, 0.2, 0.8)  # Dark blue glass
-                )
+                    glm.translate(glm.mat4(1.0), position + glm.vec3(0.0, 0.5 * building_height, 0.0)) * glm.scale(glm.mat4(1.0), glm.vec3(building_width, building_height, building_width)),
+                    color=glm.vec3(0.2, 0.2, 0.8)
+                ).set_shading_mode(1)
             )
-            # Optional: Antenna (a cylinder) on top
+
             antenna_pos = position + glm.vec3(0.0, building_height, 0.0)
             self.objects.append(
                 Cylinder(
                     self.shaders['cylinder'],
-                    height = 1.0,
-                    radius = 0.1,
-                    color = glm.vec3(0.8, 0.8, 0.8),  # Gray antenna
-                    model = glm.translate(glm.mat4(1.0), antenna_pos)
-                )
+                    height=2.0,
+                    radius=0.1,
+                    color=glm.vec3(0.2, 0.2, 0.2),
+                    model=glm.translate(glm.mat4(1.0), antenna_pos)
+                ).set_shading_mode(1)
             )
         else:
-            # Smaller commercial structure (like a shop)
+            building_width = self.cell_size * 0.45
+            building_height = random.uniform(0.15 * self.height_scale, 0.25 * self.height_scale)
             self.objects.append(
                 Cube(
                     self.shaders['mesh'],
                     'var/cube.txt',
-                    glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(building_width, 2.0, building_width)),
-                    color = glm.vec3(0.3, 0.3, 0.3)  # Grayish
-                )
+                    glm.translate(glm.mat4(1.0), position + glm.vec3(0.0, 0.5 * building_height, 0.0)) * glm.scale(glm.mat4(1.0), glm.vec3(building_width, building_height, building_width)),
+                    color=glm.vec3(0.2, 0.2, 0.2)
+                ).set_shading_mode(1)
             )
 
+
     def _add_park(self, position: glm.vec3) -> None:
-        """
-        Add a park area: a flat green 'lawn' (cube scaled flat),
-        plus a few trees (cylinders with cones).
-        """
+        """Add a park area (flat lawn) with random trees."""
         park_width = self.cell_size*0.8
+        park_height = 0.1
+        position.y = self.sample_terrain_height(position.x, position.z)  # Sample accurate terrain height
         # Park ground
         self.objects.append(
             Cube(
                 self.shaders['mesh'],
                 'var/cube.txt',
-                glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(park_width, 0.1, park_width)),
+                glm.translate(glm.mat4(1.0), position + glm.vec3(0.0,0.5*park_height,0.0)) * glm.scale(glm.mat4(1.0), glm.vec3(park_width,park_height, park_width)),
                 color = glm.vec3(0.1, 0.7, 0.1)  # Green lawn
-            )
+            ).set_shading_mode(1)
         )
 
         # Add a few trees
@@ -421,50 +524,50 @@ class SceneBuilder:
                     height = 1.0,
                     radius = 0.1,
                     color = glm.vec3(0.4, 0.2, 0.1),  # Brown trunk
-                    model = glm.translate(glm.mat4(1.0), tree_pos)
-                )
+                    model = glm.translate(glm.mat4(1.0), tree_pos+glm.vec3(0.0, 0.5, 0.0))
+                ).set_shading_mode(1)
             )
             # Tree foliage: cone on top of the trunk
-            foliage_pos = tree_pos + glm.vec3(0.0, 1.0, 0.0)
+            foliage_pos = tree_pos + glm.vec3(0.0, .50, 0.0)
             self.objects.append(
                 Cone(
                     self.shaders['cone'],
                     height = 0.8,
                     radius = 0.5,
                     color = glm.vec3(0.0, 0.5, 0.0),  # Green foliage
-                    model = glm.translate(glm.mat4(1.0), foliage_pos)
-                )
+                    model = glm.translate(glm.mat4(1.0), foliage_pos + glm.vec3(0.0, 0.5*0.8, 0.0))
+                ).set_shading_mode(1)
             )
 
+
     def _add_stadium(self, position: glm.vec3) -> None:
-        """
-        Add a stadium: Use a torus (for stands) and a sphere (as a dome or field),
-        scaled appropriately.
-        """
-        # Stadium stands: a torus scaled to create an elliptical shape
-        stadium_width = self.cell_size*0.3
-        stadium_model = glm.translate(glm.mat4(1.0), position)
+        """Add a stadium with stands and a field."""
+        position.y = self.sample_terrain_height(position.x, position.z)  # Sample accurate terrain height
+        
+        stadium_width = self.cell_size * 0.45
+        stadium_model = glm.translate(glm.mat4(1.0), position+glm.vec3(0.0, 0.5, 0.0))
         stadium_model = glm.scale(stadium_model, glm.vec3(stadium_width, 1.0, stadium_width))
+        stadium_model = glm.rotate(stadium_model, glm.radians(90.0), glm.vec3(1.0, 0.0, 0.0))
+        
         self.objects.append(
             Torus(
                 self.shaders['torus'],
-                major_radius = 1.0,
-                minor_radius = 0.3,
-                color = glm.vec3(0.8, 0.8, 0.8),  # Light gray
-                model = stadium_model
+                major_radius=1.0,
+                minor_radius=0.3,
+                color=glm.vec3(0.8, 0.8, 0.8),
+                model=stadium_model
             )
         )
 
-        # Stadium field: a flat green ellipsoid (just a scaled sphere)
         field_model = glm.translate(glm.mat4(1.0), position) * glm.scale(glm.mat4(1.0), glm.vec3(stadium_width, 0.1, stadium_width))
         self.objects.append(
             Sphere(
                 self.shaders['sphere'],
-                center = glm.vec3(0.0, 0.0, 0.0),
-                radius = 1.0,
-                color = glm.vec3(0.0, 0.5, 0.0),
-                model = field_model
-            )
+                center=glm.vec3(0.0, 0.0, 0.0),
+                radius=1.0,
+                color=glm.vec3(0.0, 0.5, 0.0),
+                model=field_model
+            ).set_shading_mode(1)
         )
 
         # # Optional: A dome (a sphere) over the stadium, semi-transparent color (if transparency is supported)

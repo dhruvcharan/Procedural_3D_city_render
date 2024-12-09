@@ -8,13 +8,14 @@ from util import Shader
 
 
 class Tetrahedron2(Mesh):
-    color: glm.vec3 = glm.vec3(0.31, 0.5, 1.0)
-    
+        
     def __init__(self, 
                  shader: Shader, 
                  vertexFile: str, 
-                 model: glm.mat4 = glm.mat4(1.0)):
-
+                 model: glm.mat4 = glm.mat4(1.0),
+                 color: glm.vec3 = glm.vec3(0.31, 0.5, 1.0)):
+        
+        self.color = color
         floatList: list[float] = []
         
         with open(vertexFile, 'r') as fin:
@@ -65,5 +66,5 @@ class Tetrahedron2(Mesh):
         
         self.vertices: glm.array = glm.array(glm.float32, *vertexList)
         
-        super().__init__(shader, self.vertices, model)
+        super().__init__(shader, self.vertices, model, self.color)
     
