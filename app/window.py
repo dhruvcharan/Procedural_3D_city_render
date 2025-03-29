@@ -16,7 +16,7 @@ class Window:
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4)
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1)
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
-        glfwWindowHint(GLFW_RESIZABLE, False)
+        glfwWindowHint(GLFW_RESIZABLE, True)
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, True)
         
         self.window: GLFWwindow = glfwCreateWindow(width, height, title, None, None)

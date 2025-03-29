@@ -9,15 +9,22 @@ out vec4 fragColor;
 uniform vec3 viewPos;
 uniform vec3 lightPos;
 uniform vec3 lightColor;
+uniform int shadingMode;
 
 void main()
 {
+    vec3 norm;
+    if (shadingMode == 1) {
+        norm = normalize(cross(dFdx(ourFragPos), dFdy(ourFragPos)));
+    } else {
+        norm = normalize(ourNormal);
+    }
+
     // ambient
-    float ambientStrength = 0.1f;
+    float ambientStrength = 0.15f;
     vec3 ambient = ambientStrength * lightColor;
 
     // diffuse
-    vec3 norm = normalize(ourNormal);
     vec3 lightDir = normalize(lightPos - ourFragPos);
     float diff = max(dot(norm, lightDir), 0.0f);
     vec3 diffuse = diff * lightColor;

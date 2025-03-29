@@ -22,7 +22,8 @@ class Sphere(GLShape, Renderable):
         self.color: glm.vec3 = copy.deepcopy(color)
         self.radius: float = radius
         self.dummy: glm.array = glm.array(glm.float32, 0.0)
-        
+        self.tess_level_inner: float = 32
+        self.tess_level_outer: float = 32
         glBindVertexArray(self.vao);
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo);
 
@@ -49,6 +50,8 @@ class Sphere(GLShape, Renderable):
         self.shader.setVec3('center', self.center)
         self.shader.setFloat('radius', self.radius)
         self.shader.setVec3('color', self.color)
+        self.shader.setFloat('tessLevelInner', self.tess_level_inner)
+        self.shader.setFloat('tessLevelOuter', self.tess_level_outer)
         
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
@@ -61,6 +64,24 @@ class Sphere(GLShape, Renderable):
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
+        
+    def subdivide(self):
+        self.tess_level_inner = min(self.tess_level_inner+2, 128)
+        self.tess_level_outer = min(self.tess_level_outer+2, 128)
+        
+    
+    def scale_object(self, scale: glm.vec3):
+        self.radius *= scale.x
+        
+    def translate(self, offset: glm.vec3):
+        self.center += offset
+        
+    def rotate(self, angle: float, axis: glm.vec3):
+        pass
 
+    def set_shading_mode(self, mode: int):
+        self.shader.use()
+        self.shader.setInt('shadingMode', mode)
+        return self
 
 

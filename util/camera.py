@@ -20,7 +20,7 @@ class Camera:
     # Default camera values
     kDefaultYaw: float = -90.0
     kDefaultPitch: float = 0.0
-    kDefaultSpeed: float = 2.5
+    kDefaultSpeed: float = 7.5
     kDefaultSensitivity: float = 0.1
     kDefaultZoom: float = 45.0
 

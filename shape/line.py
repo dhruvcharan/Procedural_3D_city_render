@@ -15,6 +15,8 @@ class Line(GLShape, Renderable):
                  vertices: glm.array, 
                  model: glm.mat4 = glm.mat4(1.0)):
         
+        self.color = glm.vec3(0.3, 0.5, 0.7)
+        
         assert vertices.element_type == glm.float32 and vertices.length % 6 == 0, \
                'vertices should be alm.array of dtype glm.float32, ' \
                'each six glm.flost32s constitute a vertex (x, y, z, r, g, b)'
@@ -64,4 +66,15 @@ class Line(GLShape, Renderable):
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
+        
+    def subdivide(self):
+        pass
+    
+    def scale_object(self, scale: glm.vec3):
+        pass
+    def translate(self, offset: glm.vec3):
+        pass
+    
+    def rotate(self, angle: float, axis: glm.vec3):
+        pass
 
