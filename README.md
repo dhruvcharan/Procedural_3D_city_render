@@ -1,11 +1,3 @@
-# HW3
-
-Your Name (Please replace with your name.)
-
-Your SBU ID (Please replace with your 9-digit SBU ID.)
-
-Your Email (Please replace with your email.)
-
 ## Overview
 
 Implemented a sample program to display flat-shaded triangle, tetrahedron and sphere (with tessellation shaders). 
